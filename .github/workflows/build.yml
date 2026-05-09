@@ -1,0 +1,55 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout código
+        uses: actions/checkout@v4
+
+      - name: ☕ Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: gradle
+
+      - name: 🔧 Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: 📦 Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: 🔨 Build Debug APK
+        run: ./gradlew assembleDebug
+
+      - name: 🔨 Build Release APK
+        run: ./gradlew assembleRelease
+
+      - name: ✅ Upload Debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug
+          path: app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 7
+
+      - name: ✅ Upload Release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release
+          path: app/build/outputs/apk/release/app-release-unsigned.apk
+          retention-days: 7
+
+      - name: 📊 Build Summary
+        run: |
+          echo "## 🎉 Build Concluído!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Debug APK: app/build/outputs/apk/debug/app-debug.apk" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Release APK: app/build/outputs/apk/release/app-release-unsigned.apk" >> $GITHUB_STEP_SUMMARY
