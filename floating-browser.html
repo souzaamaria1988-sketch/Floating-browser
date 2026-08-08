@@ -1,0 +1,1130 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Floating Browser Overlay</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Floating Browser Container */
+        .browser-overlay {
+            position: fixed;
+            top: 100px;
+            left: 100px;
+            width: 900px;
+            height: 600px;
+            background: rgba(255, 255, 255, 0.98);
+            border-radius: 16px;
+            box-shadow: 0 25px 80px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.1);
+            overflow: hidden;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 9999;
+            backdrop-filter: blur(20px);
+        }
+
+        .browser-overlay.minimized {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            top: 20px !important;
+            left: 20px !important;
+        }
+
+        .browser-overlay.maximized {
+            top: 0 !important;
+            left: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            border-radius: 0;
+        }
+
+        /* Header Bar */
+        .browser-header {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            background: linear-gradient(180deg, #f8f9fa 0%, #e9ecef 100%);
+            border-bottom: 1px solid #dee2e6;
+            cursor: move;
+            user-select: none;
+        }
+
+        .browser-overlay.minimized .browser-header {
+            padding: 0;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+            cursor: pointer;
+        }
+
+        /* Window Controls */
+        .window-controls {
+            display: flex;
+            gap: 8px;
+            margin-right: 16px;
+        }
+
+        .window-btn {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            color: transparent;
+        }
+
+        .window-btn:hover {
+            color: rgba(0, 0, 0, 0.5);
+        }
+
+        .btn-close {
+            background: #ff5f57;
+        }
+
+        .btn-minimize {
+            background: #ffbd2e;
+        }
+
+        .btn-maximize {
+            background: #28ca41;
+        }
+
+        .browser-overlay.minimized .window-controls {
+            display: none;
+        }
+
+        /* Address Bar */
+        .address-bar-container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            background: white;
+            border-radius: 20px;
+            padding: 8px 16px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .address-bar-container:focus-within {
+            box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3);
+            transform: scale(1.02);
+        }
+
+        .browser-overlay.minimized .address-bar-container {
+            display: none;
+        }
+
+        .security-icon {
+            margin-right: 8px;
+            color: #28ca41;
+            font-size: 14px;
+        }
+
+        .address-input {
+            flex: 1;
+            border: none;
+            outline: none;
+            font-size: 14px;
+            color: #495057;
+            background: transparent;
+        }
+
+        .address-input::placeholder {
+            color: #adb5bd;
+        }
+
+        /* Navigation Buttons */
+        .nav-buttons {
+            display: flex;
+            gap: 4px;
+            margin-left: 12px;
+        }
+
+        .nav-btn {
+            width: 32px;
+            height: 32px;
+            border: none;
+            background: transparent;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #495057;
+            transition: all 0.2s ease;
+            font-size: 16px;
+        }
+
+        .nav-btn:hover {
+            background: rgba(102, 126, 234, 0.1);
+            color: #667eea;
+        }
+
+        .browser-overlay.minimized .nav-buttons {
+            display: none;
+        }
+
+        /* Minimized Icon */
+        .minimized-icon {
+            display: none;
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 50%;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 20px;
+            box-shadow: 0 4px 16px rgba(102, 126, 234, 0.4);
+        }
+
+        .browser-overlay.minimized .minimized-icon {
+            display: flex;
+        }
+
+        /* Content Area (Iframe) */
+        .browser-content {
+            width: 100%;
+            height: calc(100% - 70px);
+            border: none;
+            background: white;
+        }
+
+        .browser-overlay.minimized .browser-content {
+            display: none;
+        }
+
+        .browser-overlay.maximized .browser-content {
+            height: calc(100% - 70px);
+        }
+
+        /* Quick Access Bar */
+        .quick-access {
+            display: flex;
+            gap: 8px;
+            padding: 12px 16px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #dee2e6;
+            overflow-x: auto;
+        }
+
+        .browser-overlay.minimized .quick-access {
+            display: none;
+        }
+
+        .quick-btn {
+            padding: 6px 12px;
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 16px;
+            font-size: 12px;
+            color: #495057;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .quick-btn:hover {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        /* Resizer */
+        .resizer {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            width: 20px;
+            height: 20px;
+            cursor: nwse-resize;
+            background: linear-gradient(135deg, transparent 50%, rgba(102, 126, 234, 0.3) 50%);
+            border-radius: 0 0 16px 0;
+        }
+
+        .browser-overlay.minimized .resizer,
+        .browser-overlay.maximized .resizer {
+            display: none;
+        }
+
+        /* Loading Indicator */
+        .loading-indicator {
+            position: absolute;
+            top: 70px;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: #e9ecef;
+            display: none;
+        }
+
+        .loading-indicator.active {
+            display: block;
+        }
+
+        .loading-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            width: 0%;
+            transition: width 0.3s ease;
+            animation: loading 1.5s infinite;
+        }
+
+        @keyframes loading {
+            0% { width: 0%; }
+            50% { width: 70%; }
+            100% { width: 100%; }
+        }
+
+        /* Context Menu */
+        .context-menu {
+            position: fixed;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            padding: 8px 0;
+            display: none;
+            z-index: 10000;
+            min-width: 180px;
+        }
+
+        .context-menu-item {
+            padding: 10px 20px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 14px;
+            color: #495057;
+        }
+
+        .context-menu-item:hover {
+            background: #667eea;
+            color: white;
+        }
+
+        .context-menu-divider {
+            height: 1px;
+            background: #e9ecef;
+            margin: 8px 0;
+        }
+
+        /* Tooltip */
+        .tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+            z-index: 10001;
+        }
+
+        .nav-btn:hover .tooltip,
+        .window-btn:hover .tooltip,
+        .quick-btn:hover .tooltip {
+            opacity: 1;
+        }
+
+        /* Bookmarks Bar */
+        .bookmarks-bar {
+            display: flex;
+            gap: 4px;
+            padding: 8px 16px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #dee2e6;
+            overflow-x: auto;
+        }
+
+        .browser-overlay.minimized .bookmarks-bar {
+            display: none;
+        }
+
+        .bookmark-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 10px;
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            font-size: 12px;
+            color: #495057;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .bookmark-item:hover {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .bookmark-favicon {
+            width: 16px;
+            height: 16px;
+            border-radius: 3px;
+        }
+
+        /* History Panel */
+        .history-panel {
+            position: absolute;
+            top: 70px;
+            right: 0;
+            width: 300px;
+            max-height: 400px;
+            background: white;
+            border-radius: 0 0 0 16px;
+            box-shadow: -4px 8px 24px rgba(0, 0, 0, 0.15);
+            overflow-y: auto;
+            display: none;
+            z-index: 1000;
+        }
+
+        .history-panel.active {
+            display: block;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .history-header {
+            padding: 16px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #dee2e6;
+            font-weight: 600;
+            color: #495057;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .history-close {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 18px;
+            color: #495057;
+        }
+
+        .history-list {
+            list-style: none;
+        }
+
+        .history-item {
+            padding: 12px 16px;
+            border-bottom: 1px solid #f1f3f4;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+
+        .history-item:hover {
+            background: #f8f9fa;
+        }
+
+        .history-title {
+            font-size: 14px;
+            color: #495057;
+            margin-bottom: 4px;
+        }
+
+        .history-url {
+            font-size: 12px;
+            color: #adb5bd;
+        }
+
+        .browser-overlay.minimized .history-panel {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <!-- Floating Browser Overlay -->
+    <div class="browser-overlay" id="browserOverlay">
+        <!-- Header -->
+        <div class="browser-header" id="browserHeader">
+            <!-- Window Controls -->
+            <div class="window-controls">
+                <button class="window-btn btn-close" id="btnClose" title="Fechar">×</button>
+                <button class="window-btn btn-minimize" id="btnMinimize" title="Minimizar">−</button>
+                <button class="window-btn btn-maximize" id="btnMaximize" title="Maximizar">□</button>
+            </div>
+
+            <!-- Address Bar -->
+            <div class="address-bar-container">
+                <span class="security-icon" id="securityIcon">🔒</span>
+                <input 
+                    type="text" 
+                    class="address-input" 
+                    id="addressInput" 
+                    placeholder="Digite um URL ou termo de pesquisa"
+                    autocomplete="off"
+                >
+            </div>
+
+            <!-- Navigation Buttons -->
+            <div class="nav-buttons">
+                <button class="nav-btn" id="btnBack" title="Voltar">←</button>
+                <button class="nav-btn" id="btnForward" title="Avançar">→</button>
+                <button class="nav-btn" id="btnRefresh" title="Atualizar">↻</button>
+                <button class="nav-btn" id="btnHome" title="Página Inicial">🏠</button>
+                <button class="nav-btn" id="btnHistory" title="Histórico">📜</button>
+                <button class="nav-btn" id="btnBookmark" title="Adicionar aos Favoritos">⭐</button>
+            </div>
+
+            <!-- Minimized Icon -->
+            <div class="minimized-icon" id="minimizedIcon">
+                🌐
+            </div>
+        </div>
+
+        <!-- Loading Indicator -->
+        <div class="loading-indicator" id="loadingIndicator">
+            <div class="loading-bar"></div>
+        </div>
+
+        <!-- Quick Access Bar -->
+        <div class="quick-access">
+            <button class="quick-btn" data-url="https://www.google.com">🔍 Google</button>
+            <button class="quick-btn" data-url="https://www.youtube.com">📺 YouTube</button>
+            <button class="quick-btn" data-url="https://github.com">💻 GitHub</button>
+            <button class="quick-btn" data-url="https://stackoverflow.com">❓ Stack Overflow</button>
+            <button class="quick-btn" data-url="https://news.ycombinator.com">📰 Hacker News</button>
+            <button class="quick-btn" data-url="https://reddit.com">💬 Reddit</button>
+            <button class="quick-btn" data-url="https://twitter.com">🐦 Twitter</button>
+            <button class="quick-btn" data-url="about:blank">➕ Nova Aba</button>
+        </div>
+
+        <!-- Bookmarks Bar -->
+        <div class="bookmarks-bar" id="bookmarksBar">
+            <!-- Bookmarks will be added dynamically -->
+        </div>
+
+        <!-- Content Area -->
+        <iframe 
+            class="browser-content" 
+            id="browserContent" 
+            src="about:blank"
+            sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-pointer-lock"
+        ></iframe>
+
+        <!-- History Panel -->
+        <div class="history-panel" id="historyPanel">
+            <div class="history-header">
+                <span>Histórico de Navegação</span>
+                <button class="history-close" id="historyClose">×</button>
+            </div>
+            <ul class="history-list" id="historyList">
+                <!-- History items will be added dynamically -->
+            </ul>
+        </div>
+
+        <!-- Resizer -->
+        <div class="resizer" id="resizer"></div>
+    </div>
+
+    <!-- Context Menu -->
+    <div class="context-menu" id="contextMenu">
+        <div class="context-menu-item" data-action="back">← Voltar</div>
+        <div class="context-menu-item" data-action="forward">→ Avançar</div>
+        <div class="context-menu-item" data-action="refresh">↻ Atualizar</div>
+        <div class="context-menu-divider"></div>
+        <div class="context-menu-item" data-action="bookmark">⭐ Adicionar aos Favoritos</div>
+        <div class="context-menu-item" data-action="history">📜 Ver Histórico</div>
+        <div class="context-menu-divider"></div>
+        <div class="context-menu-item" data-action="copyurl">📋 Copiar URL</div>
+        <div class="context-menu-item" data-action="inspect">🔍 Inspecionar</div>
+    </div>
+
+    <!-- Tooltip -->
+    <div class="tooltip" id="tooltip"></div>
+
+    <script>
+        // Browser State
+        const state = {
+            isMinimized: false,
+            isMaximized: false,
+            history: [],
+            historyIndex: -1,
+            bookmarks: [],
+            currentUrl: '',
+            isDragging: false,
+            isResizing: false,
+            dragOffsetX: 0,
+            dragOffsetY: 0
+        };
+
+        // DOM Elements
+        const browserOverlay = document.getElementById('browserOverlay');
+        const browserHeader = document.getElementById('browserHeader');
+        const browserContent = document.getElementById('browserContent');
+        const addressInput = document.getElementById('addressInput');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        const minimizedIcon = document.getElementById('minimizedIcon');
+        const historyPanel = document.getElementById('historyPanel');
+        const historyList = document.getElementById('historyList');
+        const bookmarksBar = document.getElementById('bookmarksBar');
+        const contextMenu = document.getElementById('contextMenu');
+        const tooltip = document.getElementById('tooltip');
+        const securityIcon = document.getElementById('securityIcon');
+
+        // Window Control Buttons
+        const btnClose = document.getElementById('btnClose');
+        const btnMinimize = document.getElementById('btnMinimize');
+        const btnMaximize = document.getElementById('btnMaximize');
+
+        // Navigation Buttons
+        const btnBack = document.getElementById('btnBack');
+        const btnForward = document.getElementById('btnForward');
+        const btnRefresh = document.getElementById('btnRefresh');
+        const btnHome = document.getElementById('btnHome');
+        const btnHistory = document.getElementById('btnHistory');
+        const btnBookmark = document.getElementById('btnBookmark');
+
+        // Resizer
+        const resizer = document.getElementById('resizer');
+
+        // Initialize
+        function init() {
+            loadBookmarks();
+            loadHistory();
+            setupEventListeners();
+            updateSecurityIcon();
+        }
+
+        // Setup Event Listeners
+        function setupEventListeners() {
+            // Window Controls
+            btnClose.addEventListener('click', closeBrowser);
+            btnMinimize.addEventListener('click', toggleMinimize);
+            btnMaximize.addEventListener('click', toggleMaximize);
+            minimizedIcon.addEventListener('click', toggleMinimize);
+
+            // Navigation
+            btnBack.addEventListener('click', goBack);
+            btnForward.addEventListener('click', goForward);
+            btnRefresh.addEventListener('click', refreshPage);
+            btnHome.addEventListener('click', goHome);
+            btnHistory.addEventListener('click', toggleHistory);
+            btnBookmark.addEventListener('click', addBookmark);
+
+            // Address Bar
+            addressInput.addEventListener('keypress', handleAddressInput);
+            addressInput.addEventListener('focus', () => addressInput.select());
+
+            // Quick Access Buttons
+            document.querySelectorAll('.quick-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const url = btn.getAttribute('data-url');
+                    if (url === 'about:blank') {
+                        navigateTo('about:blank');
+                    } else {
+                        navigateTo(url);
+                    }
+                });
+            });
+
+            // Dragging
+            browserHeader.addEventListener('mousedown', startDrag);
+            document.addEventListener('mousemove', drag);
+            document.addEventListener('mouseup', stopDrag);
+
+            // Touch support for mobile
+            browserHeader.addEventListener('touchstart', startDragTouch, { passive: true });
+            document.addEventListener('touchmove', dragTouch, { passive: false });
+            document.addEventListener('touchend', stopDrag);
+
+            // Resizing
+            resizer.addEventListener('mousedown', startResize);
+            document.addEventListener('mousemove', resize);
+            document.addEventListener('mouseup', stopResize);
+
+            // Context Menu
+            browserOverlay.addEventListener('contextmenu', showContextMenu);
+            document.addEventListener('click', hideContextMenu);
+            document.querySelectorAll('.context-menu-item').forEach(item => {
+                item.addEventListener('click', handleContextMenuAction);
+            });
+
+            // History Panel Close
+            document.getElementById('historyClose').addEventListener('click', () => {
+                historyPanel.classList.remove('active');
+            });
+
+            // Iframe load events
+            browserContent.addEventListener('load', handlePageLoad);
+        }
+
+        // Window Control Functions
+        function closeBrowser() {
+            browserOverlay.style.opacity = '0';
+            browserOverlay.style.transform = 'scale(0.8)';
+            setTimeout(() => {
+                browserOverlay.style.display = 'none';
+            }, 300);
+        }
+
+        function toggleMinimize() {
+            state.isMinimized = !state.isMinimized;
+            browserOverlay.classList.toggle('minimized', state.isMinimized);
+            
+            if (!state.isMinimized) {
+                // Restore position if was maximized
+                if (!state.isMaximized) {
+                    browserOverlay.style.top = state.lastTop || '100px';
+                    browserOverlay.style.left = state.lastLeft || '100px';
+                }
+            }
+        }
+
+        function toggleMaximize() {
+            state.isMaximized = !state.isMaximized;
+            browserOverlay.classList.toggle('maximized', state.isMaximized);
+            
+            if (state.isMaximized) {
+                state.lastTop = browserOverlay.style.top;
+                state.lastLeft = browserOverlay.style.left;
+                state.lastWidth = browserOverlay.style.width;
+                state.lastHeight = browserOverlay.style.height;
+            }
+            
+            btnMaximize.textContent = state.isMaximized ? '❐' : '□';
+        }
+
+        // Navigation Functions
+        function navigateTo(url) {
+            if (!url) return;
+            
+            // Convert search query to Google search
+            if (!url.startsWith('http') && !url.startsWith('about:')) {
+                if (url.includes('.') && !url.includes(' ')) {
+                    url = 'https://' + url;
+                } else {
+                    url = 'https://www.google.com/search?q=' + encodeURIComponent(url);
+                }
+            }
+
+            state.currentUrl = url;
+            addressInput.value = url;
+            
+            // Show loading indicator
+            loadingIndicator.classList.add('active');
+            
+            // Load the page
+            try {
+                browserContent.src = url;
+                addToHistory(url);
+                updateSecurityIcon();
+            } catch (error) {
+                console.error('Navigation error:', error);
+                loadingIndicator.classList.remove('active');
+            }
+
+            // Hide history panel
+            historyPanel.classList.remove('active');
+        }
+
+        function handleAddressInput(e) {
+            if (e.key === 'Enter') {
+                navigateTo(addressInput.value.trim());
+            }
+        }
+
+        function handlePageLoad() {
+            loadingIndicator.classList.remove('active');
+            updateSecurityIcon();
+        }
+
+        function goBack() {
+            if (state.historyIndex > 0) {
+                state.historyIndex--;
+                navigateTo(state.history[state.historyIndex]);
+            }
+        }
+
+        function goForward() {
+            if (state.historyIndex < state.history.length - 1) {
+                state.historyIndex++;
+                navigateTo(state.history[state.historyIndex]);
+            }
+        }
+
+        function refreshPage() {
+            if (state.currentUrl) {
+                loadingIndicator.classList.add('active');
+                browserContent.src = state.currentUrl;
+            }
+        }
+
+        function goHome() {
+            navigateTo('about:blank');
+        }
+
+        // History Functions
+        function addToHistory(url) {
+            // Remove duplicates
+            state.history = state.history.filter(h => h !== url);
+            state.history.push(url);
+            state.historyIndex = state.history.length - 1;
+            
+            // Limit history size
+            if (state.history.length > 50) {
+                state.history.shift();
+                state.historyIndex--;
+            }
+            
+            saveHistory();
+            renderHistory();
+        }
+
+        function loadHistory() {
+            const saved = localStorage.getItem('browserHistory');
+            if (saved) {
+                state.history = JSON.parse(saved);
+                state.historyIndex = state.history.length - 1;
+                renderHistory();
+            }
+        }
+
+        function saveHistory() {
+            localStorage.setItem('browserHistory', JSON.stringify(state.history));
+        }
+
+        function renderHistory() {
+            historyList.innerHTML = '';
+            state.history.slice().reverse().forEach((url, index) => {
+                const li = document.createElement('li');
+                li.className = 'history-item';
+                li.innerHTML = `
+                    <div class="history-title">${getDomain(url)}</div>
+                    <div class="history-url">${url}</div>
+                `;
+                li.addEventListener('click', () => {
+                    navigateTo(url);
+                });
+                historyList.appendChild(li);
+            });
+        }
+
+        function toggleHistory() {
+            historyPanel.classList.toggle('active');
+        }
+
+        function getDomain(url) {
+            try {
+                return new URL(url).hostname;
+            } catch {
+                return url;
+            }
+        }
+
+        // Bookmark Functions
+        function addBookmark() {
+            if (!state.currentUrl || state.currentUrl === 'about:blank') {
+                alert('Navegue para uma página primeiro!');
+                return;
+            }
+
+            const bookmark = {
+                url: state.currentUrl,
+                title: getDomain(state.currentUrl),
+                favicon: `https://www.google.com/s2/favicons?domain=${getDomain(state.currentUrl)}`
+            };
+
+            state.bookmarks.push(bookmark);
+            saveBookmarks();
+            renderBookmarks();
+            showTooltip('Página adicionada aos favoritos!');
+        }
+
+        function loadBookmarks() {
+            const saved = localStorage.getItem('browserBookmarks');
+            if (saved) {
+                state.bookmarks = JSON.parse(saved);
+                renderBookmarks();
+            }
+        }
+
+        function saveBookmarks() {
+            localStorage.setItem('browserBookmarks', JSON.stringify(state.bookmarks));
+        }
+
+        function renderBookmarks() {
+            bookmarksBar.innerHTML = '';
+            state.bookmarks.forEach((bookmark, index) => {
+                const div = document.createElement('div');
+                div.className = 'bookmark-item';
+                div.innerHTML = `
+                    <img class="bookmark-favicon" src="${bookmark.favicon}" alt="" onerror="this.style.display='none'">
+                    <span>${bookmark.title}</span>
+                `;
+                div.addEventListener('click', () => {
+                    navigateTo(bookmark.url);
+                });
+                div.addEventListener('contextmenu', (e) => {
+                    e.preventDefault();
+                    if (confirm('Remover este favorito?')) {
+                        state.bookmarks.splice(index, 1);
+                        saveBookmarks();
+                        renderBookmarks();
+                    }
+                });
+                bookmarksBar.appendChild(div);
+            });
+        }
+
+        // Security Icon
+        function updateSecurityIcon() {
+            if (state.currentUrl.startsWith('https://')) {
+                securityIcon.textContent = '🔒';
+                securityIcon.style.color = '#28ca41';
+            } else if (state.currentUrl.startsWith('http://')) {
+                securityIcon.textContent = '⚠️';
+                securityIcon.style.color = '#ffbd2e';
+            } else {
+                securityIcon.textContent = 'ℹ️';
+                securityIcon.style.color = '#667eea';
+            }
+        }
+
+        // Drag Functions
+        function startDrag(e) {
+            if (e.target.closest('.window-controls') || 
+                e.target.closest('.address-bar-container') || 
+                e.target.closest('.nav-buttons')) {
+                return;
+            }
+
+            if (state.isMinimized) return;
+
+            state.isDragging = true;
+            state.dragOffsetX = e.clientX - browserOverlay.offsetLeft;
+            state.dragOffsetY = e.clientY - browserOverlay.offsetTop;
+            browserOverlay.style.transition = 'none';
+        }
+
+        function startDragTouch(e) {
+            if (state.isMinimized) return;
+
+            state.isDragging = true;
+            const touch = e.touches[0];
+            state.dragOffsetX = touch.clientX - browserOverlay.offsetLeft;
+            state.dragOffsetY = touch.clientY - browserOverlay.offsetTop;
+            browserOverlay.style.transition = 'none';
+        }
+
+        function drag(e) {
+            if (!state.isDragging) return;
+            e.preventDefault();
+
+            const x = e.clientX - state.dragOffsetX;
+            const y = e.clientY - state.dragOffsetY;
+
+            // Boundary checks
+            const maxX = window.innerWidth - browserOverlay.offsetWidth;
+            const maxY = window.innerHeight - browserOverlay.offsetHeight;
+
+            browserOverlay.style.left = Math.max(0, Math.min(x, maxX)) + 'px';
+            browserOverlay.style.top = Math.max(0, Math.min(y, maxY)) + 'px';
+
+            if (!state.isMaximized) {
+                state.lastTop = browserOverlay.style.top;
+                state.lastLeft = browserOverlay.style.left;
+            }
+        }
+
+        function dragTouch(e) {
+            if (!state.isDragging) return;
+            e.preventDefault();
+
+            const touch = e.touches[0];
+            const x = touch.clientX - state.dragOffsetX;
+            const y = touch.clientY - state.dragOffsetY;
+
+            const maxX = window.innerWidth - browserOverlay.offsetWidth;
+            const maxY = window.innerHeight - browserOverlay.offsetHeight;
+
+            browserOverlay.style.left = Math.max(0, Math.min(x, maxX)) + 'px';
+            browserOverlay.style.top = Math.max(0, Math.min(y, maxY)) + 'px';
+        }
+
+        function stopDrag() {
+            state.isDragging = false;
+            browserOverlay.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+        }
+
+        // Resize Functions
+        function startResize(e) {
+            if (state.isMinimized || state.isMaximized) return;
+
+            state.isResizing = true;
+            state.initialWidth = browserOverlay.offsetWidth;
+            state.initialHeight = browserOverlay.offsetHeight;
+            state.initialX = e.clientX;
+            state.initialY = e.clientY;
+            browserOverlay.style.transition = 'none';
+        }
+
+        function resize(e) {
+            if (!state.isResizing) return;
+
+            const width = state.initialWidth + (e.clientX - state.initialX);
+            const height = state.initialHeight + (e.clientY - state.initialY);
+
+            // Minimum size
+            const minWidth = 400;
+            const minHeight = 300;
+
+            browserOverlay.style.width = Math.max(minWidth, width) + 'px';
+            browserOverlay.style.height = Math.max(minHeight, height) + 'px';
+        }
+
+        function stopResize() {
+            state.isResizing = false;
+            browserOverlay.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+        }
+
+        // Context Menu Functions
+        function showContextMenu(e) {
+            e.preventDefault();
+            
+            const x = e.clientX;
+            const y = e.clientY;
+            
+            // Boundary checks
+            const menuWidth = 180;
+            const menuHeight = 200;
+            
+            contextMenu.style.left = Math.min(x, window.innerWidth - menuWidth) + 'px';
+            contextMenu.style.top = Math.min(y, window.innerHeight - menuHeight) + 'px';
+            contextMenu.style.display = 'block';
+        }
+
+        function hideContextMenu() {
+            contextMenu.style.display = 'none';
+        }
+
+        function handleContextMenuAction(e) {
+            const action = e.currentTarget.getAttribute('data-action');
+            
+            switch (action) {
+                case 'back':
+                    goBack();
+                    break;
+                case 'forward':
+                    goForward();
+                    break;
+                case 'refresh':
+                    refreshPage();
+                    break;
+                case 'bookmark':
+                    addBookmark();
+                    break;
+                case 'history':
+                    toggleHistory();
+                    break;
+                case 'copyurl':
+                    navigator.clipboard.writeText(state.currentUrl);
+                    showTooltip('URL copiada!');
+                    break;
+                case 'inspect':
+                    // Note: This would require additional setup for actual inspection
+                    showTooltip('Inspetor não disponível em iframe');
+                    break;
+            }
+            
+            hideContextMenu();
+        }
+
+        // Tooltip Function
+        function showTooltip(message) {
+            tooltip.textContent = message;
+            tooltip.style.opacity = '1';
+            setTimeout(() => {
+                tooltip.style.opacity = '0';
+            }, 2000);
+        }
+
+        // Keyboard Shortcuts
+        document.addEventListener('keydown', (e) => {
+            // Ctrl/Cmd + L: Focus address bar
+            if ((e.ctrlKey || e.metaKey) && e.key === 'l') {
+                e.preventDefault();
+                addressInput.focus();
+                addressInput.select();
+            }
+
+            // Ctrl/Cmd + R: Refresh
+            if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
+                e.preventDefault();
+                refreshPage();
+            }
+
+            // Ctrl/Cmd + D: Add bookmark
+            if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
+                e.preventDefault();
+                addBookmark();
+            }
+
+            // Alt + Left: Back
+            if (e.altKey && e.key === 'ArrowLeft') {
+                e.preventDefault();
+                goBack();
+            }
+
+            // Alt + Right: Forward
+            if (e.altKey && e.key === 'ArrowRight') {
+                e.preventDefault();
+                goForward();
+            }
+
+            // F11 or Esc: Toggle maximize
+            if (e.key === 'F11' || (e.key === 'Escape' && state.isMaximized)) {
+                e.preventDefault();
+                toggleMaximize();
+            }
+        });
+
+        // Initialize the browser
+        init();
+
+        // Welcome message
+        console.log('%c🌐 Floating Browser Overlay', 'color: #667eea; font-size: 20px; font-weight: bold;');
+        console.log('%cArraste pela barra de título para mover | Redimensione pelo canto inferior direito', 'color: #495057; font-size: 12px;');
+    </script>
+</body>
+</html>

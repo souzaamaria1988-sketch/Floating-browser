@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
 
 jobs:
   build:
@@ -18,37 +19,66 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
-          cache: gradle
+
+      - name: 📦 Setup Gradle
+        uses: gradle/gradle-build-action@v2
 
       - name: 🔧 Android SDK
         uses: android-actions/setup-android@v3
 
       - name: 📦 Grant execute permission
-        run: chmod +x gradlew
+        run: |
+          cd android
+          chmod +x gradlew
 
       - name: 🔨 Build Release
-        run: ./gradlew bundleRelease
+        run: |
+          cd android
+          ./gradlew assembleRelease --no-daemon
 
       - name: 📝 Create Release
-        uses: actions/create-release@v1
+        uses: softprops/action-gh-release@v1
         id: create_release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
+          tag_name: ${{ github.ref_name }}
+          release_name: Floating Browser ${{ github.ref_name }}
           body: |
             ## 🚀 Floating Browser Release
             
-            Builds:
-            - ✅ Release Bundle: `app-release.aab`
-            - ✅ APK disponível nos artifacts
+            ### ✨ Funcionalidades:
+            - 🌐 Navegador WebView completo
+            - 🎨 Interface flutuante e dinâmica
+            - 📱 Suporte a gestos e touch
+            - 🔒 Permissões de câmera, microfone e localização
+            - 📂 Gerenciador de favoritos e histórico
+            - ⌨️ Atalhos de teclado
+            
+            ### 📦 Downloads:
+            - **APK Release:** Disponível abaixo
+            - **Debug APK:** Disponível nos artifacts
+            
+            ### 📋 Notas:
+            - Versão mínima do Android: 5.0 (API 21)
+            - Otimizado para Android 10+
           draft: false
           prerelease: false
+          files: |
+            android/app/build/outputs/apk/release/app-release-unsigned.apk
 
       - name: 📦 Upload Bundle
         uses: actions/upload-artifact@v4
         with:
-          name: release-bundle
-          path: app/build/outputs/bundle/release/app-release.aab
-          retention-days: 30
+          name: floating-browser-release-bundle
+          path: android/app/build/outputs/apk/release/app-release-unsigned.apk
+          retention-days: 90
+
+      - name: 📊 Release Summary
+        run: |
+          echo "## 🎉 Release Criado com Sucesso!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Tag:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Data:** $(date)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📦 Artifacts:" >> $GITHUB_STEP_SUMMARY
+          echo "- APK Release disponível no GitHub Releases" >> $GITHUB_STEP_SUMMARY
+          echo "- Bundle disponível nos artifacts por 90 dias" >> $GITHUB_STEP_SUMMARY
