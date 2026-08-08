@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    
+    <!-- Círculo externo -->
+    <path
+        android:fillColor="#ffffff"
+        android:pathData="M54,36c-9.94,0 -18,8.06 -18,18s8.06,18 18,18s18,-8.06 18,-18S63.94,36 54,36z"/>
+    
+    <!-- Anel externo -->
+    <path
+        android:fillColor="#6366f1"
+        android:pathData="M54,30c-13.25,0 -24,10.75 -24,24s10.75,24 24,24s24,-10.75 24,-24S67.25,30 54,30zM54,72c-9.94,0 -18,-8.06 -18,-18s8.06,-18 18,-18s18,8.06 18,18S63.94,72 54,72z"/>
+    
+    <!-- Ícone de navegador (globo simplificado) -->
+    <path
+        android:fillColor="#6366f1"
+        android:pathData="M54,42c-6.63,0 -12,5.37 -12,12s5.37,12 12,12s12,-5.37 12,-12S60.63,42 54,42zM54,60c-3.31,0 -6,-2.69 -6,-6s2.69,-6 6,-6s6,2.69 6,6S57.31,60 54,60z"/>
+    
+    <!-- Linhas do globo -->
+    <path
+        android:fillColor="#6366f1"
+        android:pathData="M54,38c-2.21,0 -4,1.79 -4,4h2C52,40.89 52.89,40 54,40s2,0.89 2,2h2C58,39.79 56.21,38 54,38z"/>
+</vector>
